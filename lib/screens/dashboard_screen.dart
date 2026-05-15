@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import '../services/storage_service.dart';
 import '../services/notification_service.dart';
 import '../utils/colors.dart';
+import '../widgets/custom_goal_card.dart';
 
 class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({super.key});
+  final Function(String, String)? onNotification; // ✅ Add this callback
+  
+  const DashboardScreen({super.key, this.onNotification});
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -39,6 +42,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
       _workouts = logs.length;
       _isLoading = false;
     });
+  }
+
+  // ✅ Helper method to send in-app notification
+  void _sendInAppNotification(String title, String message) {
+    if (widget.onNotification != null) {
+      widget.onNotification!(title, message);
+    }
   }
 
   Future<void> _updateSteps() async {
@@ -77,6 +87,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
               final steps = int.tryParse(controller.text) ?? 0;
               await _storageService.saveSteps(steps);
               await _notificationService.showGoalReminder();
+              
+              // ✅ Send in-app notification
+              _sendInAppNotification(
+                '👟 Steps Updated',
+                'You now have $steps steps today! Keep going! 💪',
+              );
+              
               Navigator.pop(context);
               _loadData();
             },
@@ -126,6 +143,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
               final calories = int.tryParse(controller.text) ?? 0;
               await _storageService.saveCalories(calories);
               await _notificationService.showWaterReminder();
+              
+              // ✅ Send in-app notification
+              _sendInAppNotification(
+                '🔥 Calories Updated',
+                'You burned $calories calories today! Great job! 🎉',
+              );
+              
               Navigator.pop(context);
               _loadData();
             },
@@ -182,7 +206,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             ),
                           ],
                         ),
-                        // Profile Avatar
                         Container(
                           height: 50,
                           width: 50,
@@ -245,12 +268,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              _summaryItem(
-                                  '👟', '$_steps', 'Steps'),
-                              _summaryItem(
-                                  '🔥', '$_calories', 'Calories'),
-                              _summaryItem(
-                                  '💪', '$_workouts', 'Workouts'),
+                              _summaryItem('👟', '$_steps', 'Steps'),
+                              _summaryItem('🔥', '$_calories', 'Calories'),
+                              _summaryItem('💪', '$_workouts', 'Workouts'),
                             ],
                           ),
                         ],
@@ -306,12 +326,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             subtitle: 'Tap to remind',
                             color: Colors.purple,
                             onTap: () async {
-                              await _notificationService
-                                  .showWorkoutReminder();
+                              await _notificationService.showWorkoutReminder();
+                              // ✅ Send in-app notification
+                              _sendInAppNotification(
+                                '💪 Workout Reminder',
+                                'Time for your workout! Stay active! 🔥',
+                              );
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                  content:
-                                      Text('💪 Workout reminder sent!'),
+                                  content: Text('💪 Workout reminder sent!'),
                                   backgroundColor: Colors.green,
                                 ),
                               );
@@ -326,8 +349,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             subtitle: 'Stay hydrated',
                             color: Colors.cyan,
                             onTap: () async {
-                              await _notificationService
-                                  .showWaterReminder();
+                              await _notificationService.showWaterReminder();
+                              // ✅ Send in-app notification
+                              _sendInAppNotification(
+                                '🥤 Water Reminder',
+                                'Time to drink water! Stay hydrated! 💧',
+                              );
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
                                   content: Text('🥤 Water reminder sent!'),
@@ -362,6 +389,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       color: Colors.blue,
                     ),
                     const SizedBox(height: 12),
+                    
                     _goalCard(
                       title: 'Calories Goal',
                       current: _calories,
@@ -370,6 +398,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       color: Colors.orange,
                     ),
                     const SizedBox(height: 12),
+                    
                     _goalCard(
                       title: 'Workouts Goal',
                       current: _workouts,
@@ -474,12 +503,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }) {
     double progress = (current / goal).clamp(0.0, 1.0);
     int percentage = (progress * 100).toInt();
+    bool isGoalReached = current >= goal;
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: cardColor,
         borderRadius: BorderRadius.circular(16),
+        border: isGoalReached
+            ? Border.all(color: Colors.green.withOpacity(0.5), width: 1)
+            : null,
       ),
       child: Column(
         children: [
@@ -533,9 +566,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ),
               Text(
-                current >= goal ? '✅ Goal Reached!' : '🎯 Keep going!',
+                isGoalReached ? '✅ Goal Reached!' : '🎯 Keep going!',
                 style: TextStyle(
-                  color: current >= goal ? Colors.green : hintColor,
+                  color: isGoalReached ? Colors.green : hintColor,
                   fontFamily: fontFamily,
                   fontSize: 12,
                 ),

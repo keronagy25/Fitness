@@ -18,10 +18,22 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
 
   @override
+  void initState() {
+    super.initState();
+    _checkIfLoggedIn();
+  }
+
+  @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _checkIfLoggedIn() async {
+    if (await _authService.isLoggedIn()) {
+      Navigator.pushReplacementNamed(context, '/home');
+    }
   }
 
   Future<void> _login() async {
@@ -62,11 +74,9 @@ class _LoginScreenState extends State<LoginScreen> {
               children: [
                 const SizedBox(height: 40),
 
-                // ✅ Logo Section
                 Center(
                   child: Column(
                     children: [
-                      // Logo Image
                       Container(
                         height: 120,
                         width: 120,
@@ -97,8 +107,6 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                       const SizedBox(height: 16),
-
-                      // App Name
                       const Text(
                         'FitTracker',
                         style: TextStyle(
@@ -122,7 +130,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 const SizedBox(height: 40),
 
-                // Title
                 const Text(
                   'Welcome Back! 👋',
                   style: TextStyle(
@@ -143,7 +150,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 30),
 
-                // Email Field
                 TextFormField(
                   controller: _emailController,
                   style: const TextStyle(
@@ -161,7 +167,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                // Password Field
                 TextFormField(
                   controller: _passwordController,
                   style: const TextStyle(
@@ -194,7 +199,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 32),
 
-                // Login Button
                 SizedBox(
                   width: double.infinity,
                   height: 55,
@@ -221,7 +225,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                // Register Link
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -247,37 +250,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ],
                 ),
-
-                const SizedBox(height: 16),
-
-                // ✅ Test API Button
-                SizedBox(
-                  width: double.infinity,
-                  height: 45,
-                  child: OutlinedButton.icon(
-                    onPressed: () {
-                      Navigator.pushNamed(context, '/api-test');
-                    },
-                    icon: const Icon(Icons.wifi, color: primaryColor),
-                    label: const Text(
-                      'Test API 🧪',
-                      style: TextStyle(
-                        color: primaryColor,
-                        fontFamily: fontFamily,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: primaryColor),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 24),
               ],
             ),
           ),

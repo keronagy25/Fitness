@@ -4,7 +4,6 @@ import 'screens/register_screen.dart';
 import 'screens/home_screen.dart';
 import 'services/notification_service.dart';
 import 'utils/colors.dart';
-import 'screens/api_test_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -36,7 +35,6 @@ class MyApp extends StatelessWidget {
         '/login': (context) => const LoginScreen(),
         '/register': (context) => const RegisterScreen(),
         '/home': (context) => const HomeScreen(),
-        '/api-test': (context) => const ApiTestScreen(),
       },
     );
   }

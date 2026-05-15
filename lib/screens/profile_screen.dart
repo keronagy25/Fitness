@@ -656,14 +656,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
-                    'Made with ❤️ Flutter',
-                    style: TextStyle(
-                      color: hintColor,
-                      fontFamily: fontFamily,
-                      fontSize: 12,
-                    ),
-                  ),
                   const SizedBox(height: 24),
                 ],
               ),
