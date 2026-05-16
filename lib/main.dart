@@ -1,12 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/home_screen.dart';
+import 'services/auth_service.dart';
+import 'services/storage_service.dart';
 import 'services/notification_service.dart';
 import 'utils/colors.dart';
 
+final authService = AuthService();
+final storageService = StorageService();
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   await NotificationService().initialize();
   runApp(const MyApp());
 }
@@ -22,7 +32,6 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         scaffoldBackgroundColor: backgroundColor,
         colorScheme: ColorScheme.fromSeed(seedColor: primaryColor),
-        // Apply Poppins font globally
         fontFamily: fontFamily,
         textTheme: const TextTheme(
           bodyLarge: TextStyle(fontFamily: fontFamily),
@@ -30,7 +39,7 @@ class MyApp extends StatelessWidget {
           titleLarge: TextStyle(fontFamily: fontFamily),
         ),
       ),
-      initialRoute: '/register',
+      initialRoute: '/login',
       routes: {
         '/login': (context) => const LoginScreen(),
         '/register': (context) => const RegisterScreen(),

@@ -1,125 +1,142 @@
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class WorkoutLog {
+  final String? id;
   final String exerciseName;
   final int sets;
   final int reps;
   final DateTime date;
 
   WorkoutLog({
+    this.id,
     required this.exerciseName,
     required this.sets,
     required this.reps,
     required this.date,
   });
 
-  Map<String, dynamic> toJson() => {
+  Map<String, dynamic> toMap() => {
         'exerciseName': exerciseName,
         'sets': sets,
         'reps': reps,
         'date': date.toIso8601String(),
       };
 
-  factory WorkoutLog.fromJson(Map<String, dynamic> json) => WorkoutLog(
-        exerciseName: json['exerciseName'],
-        sets: json['sets'],
-        reps: json['reps'],
-        date: DateTime.parse(json['date']),
-      );
+  factory WorkoutLog.fromDoc(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return WorkoutLog(
+      id: doc.id,
+      exerciseName: data['exerciseName'],
+      sets: data['sets'],
+      reps: data['reps'],
+      date: DateTime.parse(data['date']),
+    );
+  }
 }
 
 class StorageService {
-  // Save workout log
+  final _db = FirebaseFirestore.instance;
+  final _auth = FirebaseAuth.instance;
+
+  String get _userId => _auth.currentUser?.uid ?? '';
+  String get _today => DateTime.now().toIso8601String().substring(0, 10);
+
+  CollectionReference get _logsRef =>
+      _db.collection('users').doc(_userId).collection('workout_logs');
+
+  DocumentReference get _statsRef =>
+      _db.collection('users').doc(_userId).collection('daily_stats').doc(_today);
+
+  DocumentReference get _userRef =>
+      _db.collection('users').doc(_userId);
+
+  // ── Workout Logs ──────────────────────────────────────────
+
   Future<void> saveWorkoutLog(WorkoutLog log) async {
-    final prefs = await SharedPreferences.getInstance();
-    List<String> logs = prefs.getStringList('workout_logs') ?? [];
-    logs.add(json.encode(log.toJson()));
-    await prefs.setStringList('workout_logs', logs);
+    await _logsRef.add(log.toMap());
   }
 
-  // Get all workout logs
   Future<List<WorkoutLog>> getWorkoutLogs() async {
-    final prefs = await SharedPreferences.getInstance();
-    List<String> logs = prefs.getStringList('workout_logs') ?? [];
-    return logs.map((e) => WorkoutLog.fromJson(json.decode(e))).toList();
+    final snapshot = await _logsRef.orderBy('date').get();
+    return snapshot.docs.map(WorkoutLog.fromDoc).toList();
   }
 
-  // Save daily steps
-  Future<void> saveSteps(int steps) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('daily_steps', steps);
+  Future<void> deleteWorkoutLog(String id) async {
+    await _logsRef.doc(id).delete();
   }
-
-  // Get daily steps
-  Future<int> getSteps() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getInt('daily_steps') ?? 0;
-  }
-
-  // Save calories burned
-  Future<void> saveCalories(int calories) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('calories_burned', calories);
-  }
-
-  // Get calories burned
-  Future<int> getCalories() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getInt('calories_burned') ?? 0;
-  }
-
-  // Clear all data
-  Future<void> clearAll() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('workout_logs');
-    await prefs.remove('daily_steps');
-    await prefs.remove('calories_burned');
-  }
-  // Save user name
-Future<void> saveUserName(String name) async {
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setString('user_name', name);
-}
-
-// Get user email
-Future<String> getUserEmail() async {
-  final prefs = await SharedPreferences.getInstance();
-  return prefs.getString('user_email') ?? '';
-}
-
-// Save weight
-Future<void> saveWeight(String weight) async {
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setString('user_weight', weight);
-}
-
-// Get weight
-Future<String> getWeight() async {
-  final prefs = await SharedPreferences.getInstance();
-  return prefs.getString('user_weight') ?? '';
-}
-
-// Save height
-Future<void> saveHeight(String height) async {
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setString('user_height', height);
-}
-
-// Get height
-Future<String> getHeight() async {
-  final prefs = await SharedPreferences.getInstance();
-  return prefs.getString('user_height') ?? '';
-}
 
   Future<void> clearWorkoutLogs() async {
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.remove('workout_logs');
+    final snapshot = await _logsRef.get();
+    for (final doc in snapshot.docs) {
+      await doc.reference.delete();
+    }
   }
 
-  // Get user name
+  // ── Daily Stats ───────────────────────────────────────────
+
+  Future<void> saveSteps(int steps) async {
+    await _statsRef.set({'steps': steps}, SetOptions(merge: true));
+  }
+
+  Future<int> getSteps() async {
+    final doc = await _statsRef.get();
+    if (!doc.exists) return 0;
+    return (doc.data() as Map<String, dynamic>)['steps'] ?? 0;
+  }
+
+  Future<void> saveCalories(int calories) async {
+    await _statsRef.set({'calories': calories}, SetOptions(merge: true));
+  }
+
+  Future<int> getCalories() async {
+    final doc = await _statsRef.get();
+    if (!doc.exists) return 0;
+    return (doc.data() as Map<String, dynamic>)['calories'] ?? 0;
+  }
+
+  // ── User Profile ──────────────────────────────────────────
+
   Future<String> getUserName() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('user_name') ?? 'User';
+    final doc = await _userRef.get();
+    if (!doc.exists) return 'User';
+    return (doc.data() as Map<String, dynamic>)['name'] ?? 'User';
+  }
+
+  Future<void> saveUserName(String name) async {
+    await _userRef.set({'name': name}, SetOptions(merge: true));
+  }
+
+  Future<String> getUserEmail() async {
+    final doc = await _userRef.get();
+    if (!doc.exists) return '';
+    return (doc.data() as Map<String, dynamic>)['email'] ?? '';
+  }
+
+  Future<String> getWeight() async {
+    final doc = await _userRef.get();
+    if (!doc.exists) return '';
+    return (doc.data() as Map<String, dynamic>)['weight'] ?? '';
+  }
+
+  Future<void> saveWeight(String weight) async {
+    await _userRef.set({'weight': weight}, SetOptions(merge: true));
+  }
+
+  Future<String> getHeight() async {
+    final doc = await _userRef.get();
+    if (!doc.exists) return '';
+    return (doc.data() as Map<String, dynamic>)['height'] ?? '';
+  }
+
+  Future<void> saveHeight(String height) async {
+    await _userRef.set({'height': height}, SetOptions(merge: true));
+  }
+
+  // ── Clear All ─────────────────────────────────────────────
+
+  Future<void> clearAll() async {
+    await clearWorkoutLogs();
+    await _statsRef.delete();
   }
 }

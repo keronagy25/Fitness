@@ -1,47 +1,63 @@
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AuthService {
-  // Register new user
+  final _auth = FirebaseAuth.instance;
+  final _db = FirebaseFirestore.instance;
+
+  String? get currentUserId => _auth.currentUser?.uid;
+
   Future<bool> register(String name, String email, String password) async {
-    final prefs = await SharedPreferences.getInstance();
+    try {
+      print('Starting registration...');
 
-    // Check if email already exists
-    String? existingEmail = prefs.getString('user_email');
-    if (existingEmail == email) {
-      return false; // User already exists
-    }
+      final cred = await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
 
-    // Save user data
-    await prefs.setString('user_name', name);
-    await prefs.setString('user_email', email);
-    await prefs.setString('user_password', password);
+      print('Auth success! UID: ${cred.user!.uid}');
 
-    return true;
-  }
+      await _db.collection('users').doc(cred.user!.uid).set({
+        'name': name,
+        'email': email,
+        'weight': '',
+        'height': '',
+        'createdAt': FieldValue.serverTimestamp(),
+      });
 
-  // Login user
-  Future<bool> login(String email, String password) async {
-    final prefs = await SharedPreferences.getInstance();
-
-    String? savedEmail = prefs.getString('user_email');
-    String? savedPassword = prefs.getString('user_password');
-
-    if (savedEmail == email && savedPassword == password) {
-      await prefs.setBool('is_logged_in', true);
+      print('Firestore write success!');
       return true;
+
+    } on FirebaseAuthException catch (e) {
+      print('FirebaseAuthException: ${e.code} - ${e.message}');
+      if (e.code == 'email-already-in-use') return false;
+      rethrow;
+    } catch (e, stack) {
+      print('Unknown error: $e');
+      print('Stack: $stack');
+      return false;
     }
-    return false;
   }
 
-  // Logout
+  Future<bool> login(String email, String password) async {
+    try {
+      await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      return true;
+    } on FirebaseAuthException catch (e) {
+      print('Login error: ${e.code} - ${e.message}');
+      return false;
+    }
+  }
+
   Future<void> logout() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('is_logged_in', false);
+    await _auth.signOut();
   }
 
-  // Check if logged in
   Future<bool> isLoggedIn() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool('is_logged_in') ?? false;
+    return _auth.currentUser != null;
   }
 }
